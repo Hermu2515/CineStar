@@ -31,6 +31,8 @@ class Reserva {
     const asientosUnicos = new Set(asientosNormalizados);
 
     if (asientosUnicos.size !== asientosNormalizados.length) {
+        //Si no es igual, significa que el usuario mando dos asientos iguales
+        //porque size elimina duplicados
       throw new Error("La selección contiene asientos duplicados.");
     }
     const estadosPermitidos = [
