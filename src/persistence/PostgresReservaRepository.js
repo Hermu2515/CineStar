@@ -81,6 +81,17 @@ export class PostgresReservaRepository {
     return this.findById(id);
   }
 
+  async deleteById(id) {
+    const result = await this.pool.query(
+      `DELETE FROM reservas
+       WHERE id = $1
+       RETURNING id`,
+      [id],
+    );
+
+    return result.rows.length > 0;
+  }
+
   toReserva(row) {
     return {
       id: row.id,
