@@ -5,7 +5,7 @@ import {
   ValidationError,
 } from "./errors.js";
 
-export class ConfirmReservasServide {
+export class ConfirmReservasService {
   constructor(reservas) {
     this.reservas = reservas;
   }
