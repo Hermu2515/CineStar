@@ -4,36 +4,28 @@ import {
   NotFoundError,
   UnauthorizedError,
   ValidationError,
-} from "../application/errors.js";
+} from '../application/errors.js';
 
-export function errorHandler(err, _req, res, _next) {
-  if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
-    return res
-      .status(400)
-      .json({ error: "El cuerpo de la petición no es un JSON válido." });
+export function errorHandler(error, _request, response, _next) {
+  if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
+    return response.status(400).json({ error: 'El cuerpo de la petición no es un JSON válido.' });
+  }
+  if (error instanceof ValidationError) {
+    return response.status(400).json({ error: error.message });
+  }
+  if (error instanceof UnauthorizedError) {
+    return response.status(401).json({ error: error.message });
+  }
+  if (error instanceof ForbiddenError) {
+    return response.status(403).json({ error: error.message });
+  }
+  if (error instanceof NotFoundError) {
+    return response.status(404).json({ error: error.message });
+  }
+  if (error instanceof ConflictError) {
+    return response.status(409).json({ error: error.message });
   }
 
-  if (err instanceof ValidationError) {
-    return res.status(400).json({ error: err.message });
-  }
-
-  if (err instanceof UnauthorizedError) {
-    return res.status(401).json({ error: err.message });
-  }
-
-  if (err instanceof ForbiddenError) {
-    return res.status(403).json({ error: err.message });
-  }
-
-  if (err instanceof NotFoundError) {
-    return res.status(404).json({ error: err.message });
-  }
-
-  if (err instanceof ConflictError) {
-    return res.status(409).json({ error: err.message });
-  }
-
-  console.error('Error inesperado en el servidor:', err);
-  return res.status(500).json({ error: 'Error interno del servidor.' });
+  console.error('Error no controlado en la solicitud:', error);
+  return response.status(500).json({ error: 'Ocurrió un error interno.' });
 }
-
