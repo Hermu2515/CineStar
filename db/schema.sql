@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS peliculas (
   duracion_minutos INT NOT NULL CHECK (duracion_minutos > 0),
   clasificacion VARCHAR(20) NOT NULL,
   genero VARCHAR(60) NOT NULL,
-  estado VARCHAR(20) NOT NULL CHECK (estado IN ('ESTRENO', 'PRE_ESTRENO', 'PREVENTA')),
+  estado VARCHAR(20) NOT NULL CHECK (estado IN ('ESTRENO', 'PRE_ESTRENO', 'PRE_VENTA')),
   poster_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
