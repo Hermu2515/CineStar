@@ -1,25 +1,18 @@
-import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from './errors.js';
+import { ConflictError, ForbiddenError, NotFoundError } from './errors.js';
 
 export class CancelReservaService {
-  constructor(reservas) {
-    this.reservas = reservas;
+  constructor(reservaRepository) {
+    this.reservaRepository = reservaRepository;
   }
 
-  async execute(input) {
-    if (!input || typeof input.reservaId !== 'string' || input.reservaId.trim().length === 0) {
-      throw new ValidationError('reservaId es obligatorio.');
-    }
-    if (!input.usuarioId || typeof input.usuarioId !== 'string') {
-      throw new ValidationError('usuarioId es obligatorio.');
-    }
-
-    const reserva = await this.reservas.findById(input.reservaId.trim());
+  async execute({ reservaId, usuarioId }) {
+    const reserva = await this.reservaRepository.findById(reservaId);
     if (!reserva) {
-      throw new NotFoundError('La reserva especificada no existe.');
+      throw new NotFoundError('Reserva no encontrada.');
     }
 
-    if (reserva.usuarioId !== input.usuarioId) {
-      throw new ForbiddenError('No tienes permiso sobre esta reserva.');
+    if (reserva.usuarioId !== usuarioId) {
+      throw new ForbiddenError('No tienes permiso para cancelar esta reserva.');
     }
 
     if (reserva.estado === 'CONFIRMADA') {
@@ -28,10 +21,9 @@ export class CancelReservaService {
       );
     }
 
-    await this.reservas.deleteById(reserva.id);
-
+    await this.reservaRepository.deleteById(reservaId);
     return {
-      id: reserva.id,
+      id: reservaId,
       cancelada: true,
       message: 'Bloqueo temporal cancelado y asientos liberados.',
     };

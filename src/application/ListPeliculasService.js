@@ -1,11 +1,11 @@
-export class ListPeliculaService{
+export class ListPeliculasService{
     constructor(peliculas){
         this.peliculas = peliculas
     }
     
     async execute(filters = {}){
         const todas = await this.peliculas.findAll()
-        return todas.filters((pelicula) =>{
+        return todas.filter((pelicula) =>{
             if(
                 filters.genero && pelicula.genero.toLowerCase() !== String(filters.genero).trim().toLowerCase()
             ){

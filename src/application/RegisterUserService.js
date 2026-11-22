@@ -1,6 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import bcrypt from 'bcrypt';
-import { ConflicError, ValidationError } from './error';
+import { ConflictError, ValidationError } from './errors.js';
 import { normalize } from 'node:path';
 
 export class RegisterUserService{
@@ -25,7 +25,7 @@ export class RegisterUserService{
         const rol = this.validRol(input.rol);
         const existing = await this.usuarios.findByEmail(email);
         if(existing){
-            throw new ConflicError('El corre ya se encuentra registrado')
+            throw new ConflictError('El corre ya se encuentra registrado')
         }
 
         const passwordHash = await bcrypt.hash(password, 10);

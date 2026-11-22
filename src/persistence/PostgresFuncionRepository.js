@@ -2,7 +2,7 @@ export class PostgresFuncionRepository{
     constructor(pool){
         this.pool = pool
     }
-    async created(funcion){
+    async create(funcion){
         const result = await this.pool.query(
             `INSERT INTO funciones(id, pelicula_id, sala, horario_inicio, horario_fin, precio_entrada, capacidad_total, created_at)
             VALUES($1, $2, $3, $4, $5, $6, $7, $8)
@@ -53,7 +53,7 @@ export class PostgresFuncionRepository{
             horarioInicio: row.horario_inicio,
             horarioFin: row.horario_fin,
             precioEntrada: Number(row.precio_entrada),
-            capacidadTotal: Number(row.capcidad_total),
+            capacidadTotal: Number(row.capacidad_total),
             createdAt: row.created_at,
             
         };

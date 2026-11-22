@@ -1,0 +1,652 @@
+openapi: 3.0.3
+info:
+  title: CineStar API
+  version: 1.0.0
+  description: >
+    Contrato HTTP del monolito en capas de CineStar para gestión de cartelera,
+    programación de funciones, autenticación con roles y reserva de boletos con
+    bloqueo temporal de asientos.
+servers:
+  - url: http://localhost:3000
+    description: Servidor local de desarrollo
+
+paths:
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Comprobar que la API responde
+      responses:
+        '200':
+          description: Proceso HTTP activo.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /openapi.yaml:
+    get:
+      operationId: getOpenApiDocument
+      summary: Obtener el contrato OpenAPI en formato YAML
+      responses:
+        '200':
+          description: Documento OpenAPI 3.0.3.
+          content:
+            application/yaml:
+              schema:
+                type: string
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/auth/register:
+    post:
+      operationId: registerUser
+      summary: Registrar un nuevo usuario (CLIENTE o ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterInput'
+      responses:
+        '201':
+          description: Usuario registrado correctamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/auth/login:
+    post:
+      operationId: loginUser
+      summary: Iniciar sesión y obtener token JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+      responses:
+        '200':
+          description: Autenticación exitosa.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/peliculas:
+    get:
+      operationId: listPeliculas
+      summary: Consultar la cartelera de películas con filtros opcionales
+      parameters:
+        - name: genero
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 1
+          example: Ciencia Ficción
+        - name: estado
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ESTRENO, PRE_ESTRENO, PREVENTA]
+      responses:
+        '200':
+          description: Películas registradas en cartelera.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pelicula'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      operationId: createPelicula
+      summary: Registrar una nueva película en cartelera (solo ADMIN)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePeliculaInput'
+      responses:
+        '201':
+          description: Película creada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pelicula'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/funciones:
+    get:
+      operationId: listFunciones
+      summary: Consultar horarios y disponibilidad de asientos por película o fecha
+      parameters:
+        - name: peliculaId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: fecha
+          in: query
+          required: false
+          description: Fecha en formato YYYY-MM-DD
+          schema:
+            type: string
+          example: '2026-12-01'
+      responses:
+        '200':
+          description: Funciones programadas con asientos ocupados y disponibles.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FuncionDisponibilidad'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      operationId: createFuncion
+      summary: Programar una función en sala (solo ADMIN)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFuncionInput'
+      responses:
+        '201':
+          description: Función creada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Funcion'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/reservas/mias:
+    get:
+      operationId: listMisReservas
+      summary: Consultar las reservas del usuario autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Reservas asociadas al usuario autenticado.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reserva'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/reservas:
+    post:
+      operationId: createReserva
+      summary: Crear una reserva con bloqueo temporal de asientos por 5 minutos
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReservaInput'
+      responses:
+        '201':
+          description: Reserva creada en estado BLOQUEADA.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reserva'
+        '400':
+          $ref: '#/components/responses/InvalidInput'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/reservas/{id}/confirmar:
+    patch:
+      operationId: confirmReserva
+      summary: Confirmar y pagar una reserva bloqueada antes de su expiración
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Reserva confirmada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reserva'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/reservas/{id}:
+    delete:
+      operationId: cancelReserva
+      summary: Cancelar una reserva pendiente de pago (prohibido si ya está CONFIRMADA)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Bloqueo temporal cancelado y asientos liberados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelReservaResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RegisterInput:
+      type: object
+      additionalProperties: false
+      required: [nombre, email, password]
+      properties:
+        nombre:
+          type: string
+          minLength: 1
+          maxLength: 160
+          example: Ana Pérez
+        email:
+          type: string
+          format: email
+          maxLength: 160
+          example: ana@correo.com
+        password:
+          type: string
+          minLength: 6
+          maxLength: 100
+          example: Password123
+        rol:
+          type: string
+          enum: [CLIENTE, ADMIN]
+          default: CLIENTE
+          example: CLIENTE
+
+    Usuario:
+      type: object
+      required: [id, nombre, email, rol, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        nombre:
+          type: string
+          example: Ana Pérez
+        email:
+          type: string
+          format: email
+          example: ana@correo.com
+        rol:
+          type: string
+          enum: [CLIENTE, ADMIN]
+          example: CLIENTE
+        createdAt:
+          type: string
+          format: date-time
+
+    LoginInput:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: ana@correo.com
+        password:
+          type: string
+          minLength: 1
+          example: Password123
+
+    LoginResponse:
+      type: object
+      required: [token, usuario]
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        usuario:
+          type: object
+          required: [id, nombre, email, rol]
+          properties:
+            id:
+              type: string
+              format: uuid
+            nombre:
+              type: string
+            email:
+              type: string
+            rol:
+              type: string
+              enum: [CLIENTE, ADMIN]
+
+    CreatePeliculaInput:
+      type: object
+      additionalProperties: false
+      required: [titulo, sinopsis, duracionMinutos, clasificacion, genero, estado]
+      properties:
+        titulo:
+          type: string
+          minLength: 1
+          maxLength: 160
+          example: Interestelar
+        sinopsis:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          example: Un equipo de exploradores viaja a través de un agujero de gusano en el espacio.
+        duracionMinutos:
+          type: integer
+          minimum: 1
+          example: 169
+        clasificacion:
+          type: string
+          minLength: 1
+          maxLength: 20
+          example: PG-13
+        genero:
+          type: string
+          minLength: 1
+          maxLength: 60
+          example: Ciencia Ficción
+        estado:
+          type: string
+          enum: [ESTRENO, PRE_ESTRENO, PREVENTA]
+          example: ESTRENO
+        posterUrl:
+          type: string
+          nullable: true
+          example: https://cdn.cinestar.com/posters/interestelar.jpg
+
+    Pelicula:
+      allOf:
+        - $ref: '#/components/schemas/CreatePeliculaInput'
+        - type: object
+          required: [id, createdAt]
+          properties:
+            id:
+              type: string
+              format: uuid
+            createdAt:
+              type: string
+              format: date-time
+
+    CreateFuncionInput:
+      type: object
+      additionalProperties: false
+      required: [peliculaId, sala, horarioInicio, precioEntrada, capacidadTotal]
+      properties:
+        peliculaId:
+          type: string
+          format: uuid
+        sala:
+          type: string
+          minLength: 1
+          maxLength: 60
+          example: Sala IMAX
+        horarioInicio:
+          type: string
+          format: date-time
+          example: '2026-12-01T20:00:00Z'
+        precioEntrada:
+          type: number
+          minimum: 0.01
+          example: 8.5
+        capacidadTotal:
+          type: integer
+          minimum: 1
+          example: 50
+
+    Funcion:
+      type: object
+      required:
+        - id
+        - peliculaId
+        - sala
+        - horarioInicio
+        - horarioFin
+        - precioEntrada
+        - capacidadTotal
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        peliculaId:
+          type: string
+          format: uuid
+        sala:
+          type: string
+          example: Sala IMAX
+        horarioInicio:
+          type: string
+          format: date-time
+        horarioFin:
+          type: string
+          format: date-time
+        precioEntrada:
+          type: number
+          example: 8.5
+        capacidadTotal:
+          type: integer
+          example: 50
+        createdAt:
+          type: string
+          format: date-time
+
+    FuncionDisponibilidad:
+      allOf:
+        - $ref: '#/components/schemas/Funcion'
+        - type: object
+          required: [asientosOcupados, asientosDisponibles]
+          properties:
+            asientosOcupados:
+              type: array
+              items:
+                type: string
+              example: [B1, B2]
+            asientosDisponibles:
+              type: integer
+              example: 48
+
+    CreateReservaInput:
+      type: object
+      additionalProperties: false
+      required: [funcionId, asientos]
+      properties:
+        funcionId:
+          type: string
+          format: uuid
+        asientos:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+            maxLength: 10
+          example: [B1, B2]
+
+    Reserva:
+      type: object
+      required: [id, usuarioId, funcionId, asientos, total, estado, expiraEn, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        usuarioId:
+          type: string
+          format: uuid
+        funcionId:
+          type: string
+          format: uuid
+        asientos:
+          type: array
+          items:
+            type: string
+          example: [B1, B2]
+        total:
+          type: number
+          example: 17.0
+        estado:
+          type: string
+          enum: [BLOQUEADA, CONFIRMADA]
+          example: BLOQUEADA
+        expiraEn:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    CancelReservaResponse:
+      type: object
+      required: [id, cancelada, message]
+      properties:
+        id:
+          type: string
+          format: uuid
+        cancelada:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Bloqueo temporal cancelado y asientos liberados.
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+  responses:
+    InvalidInput:
+      description: Solicitud que no cumple el contrato o las reglas de validación.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    UnauthorizedError:
+      description: Token de autenticación ausente, inválido o expirado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ForbiddenError:
+      description: El usuario autenticado no tiene permisos para realizar esta acción.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFoundError:
+      description: El recurso solicitado no existe.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ConflictError:
+      description: Conflicto con una regla de negocio o estado actual del recurso.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: Error interno no expuesto al consumidor.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

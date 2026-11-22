@@ -1,5 +1,3 @@
-import { aw } from "vitest/dist/chunks/reporters.nr4dxCkA.js";
-
 export class PostgresPeliculaRepository {
   constructor(pool) {
     this.pool = pool;
@@ -8,7 +6,7 @@ export class PostgresPeliculaRepository {
   async create(pelicula) {
     const result = await this.pool.query(
       `INSERT INTO peliculas(id, titulo, sinopsis, duracion_minutos, clasificacion, genero, estado, poster_url, created_at)
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9,)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING id, titulo, sinopsis, duracion_minutos, clasificacion, genero, estado, poster_url, created_at`,
       [
         pelicula.id,

@@ -42,7 +42,7 @@ export class PostgresUsuarioRepository{
         if(result.rows.length === 0){
             return null
         }
-        return toUsuario(result.rows[0])
+        return this.toUsuario(result.rows[0])
     }
 
     toUsuario(row){

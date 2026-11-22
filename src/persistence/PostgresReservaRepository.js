@@ -30,7 +30,7 @@ export class PostgresReservaRepository {
         );
       }
       await cliente.query("COMMIT");
-      return this.ToReserva({ ...result.rows[0], asientos: reserva.asientos });
+      return this.toReserva({ ...result.rows[0], asientos: reserva.asientos });
     } catch (error) {
       await cliente.query("ROLLBACK");
       throw error;
@@ -48,7 +48,7 @@ export class PostgresReservaRepository {
        GROUP BY r.id
        ORDER BY r.created_at DESC, r.id ASC`,
     );
-    return result.rows.map((row) => toReserva(row));
+    return result.rows.map((row) => this.toReserva(row));
   }
 
   async findById(id) {
@@ -67,8 +67,22 @@ export class PostgresReservaRepository {
     return this.toReserva(result.rows[0]);
   }
 
+  async findByUsuarioId(usuarioId) {
+    const result = await this.pool.query(
+      `SELECT r.id, r.usuario_id, r.funcion_id, r.total, r.estado, r.expira_en, r.created_at,
+              COALESCE(ARRAY_AGG(ra.asiento ORDER BY ra.asiento) FILTER (WHERE ra.asiento IS NOT NULL), '{}') AS asientos
+       FROM reservas r
+       LEFT JOIN reserva_asientos ra ON ra.reserva_id = r.id
+       WHERE r.usuario_id = $1
+       GROUP BY r.id
+       ORDER BY r.created_at DESC, r.id ASC`,
+      [usuarioId],
+    );
+    return result.rows.map((row) => this.toReserva(row));
+  }
+
   async confirm(id){
-    const result = this.pool.query(
+    const result = await this.pool.query(
         `UPDATE reservas SET estado = 'CONFIRMADA'
         WHERE id = $1
         RETURNING id`,

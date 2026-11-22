@@ -1,9 +1,9 @@
-export class ListMisReservasService{
-    constructor(reservas){
-        this.reservas = reservas
-    }
-    async execuste(usuarioId){
-        const todas = await this.reservas.findAll();
-        return todas.filter((reserva) => reserva.usuarioId === usuarioId)
-    }
+export class ListMisReservasService {
+  constructor(reservaRepository) {
+    this.reservaRepository = reservaRepository;
+  }
+
+  async execute(usuarioId) {
+    return this.reservaRepository.findByUsuarioId(usuarioId);
+  }
 }
