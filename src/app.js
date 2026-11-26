@@ -17,6 +17,7 @@ import { CreateReservaService } from "./application/CreateReservaService.js";
 import { ConfirmReservaService } from "./application/ConfirmReservaService.js";
 import { CancelReservaService } from "./application/CancelReservaService.js";
 import { ListMisReservasService } from "./application/ListMisReservasService.js";
+import {GetUsuariosService} from "./application/GetUsuarioService.js"
 
 import { createAuthMiddlewares } from "./presentation/authMiddleware.js";
 import { AuthController } from "./presentation/AuthController.js";
@@ -40,6 +41,7 @@ export function createApp(pool, jwtSecret = process.env.JWT_SECRET) {
 
   // 2. Aplicación (Casos de uso)
   const registerUserService = new RegisterUserService(usuarioRepository);
+  const getUsuariosService = new GetUsuariosService(usuarioRepository)
   const loginUserService = new LoginUserService(usuarioRepository, jwtSecret);
   const createPeliculaService = new CreatePeliculaService(peliculaRepository);
   const listPeliculasService = new ListPeliculasService(peliculaRepository);
@@ -59,12 +61,13 @@ export function createApp(pool, jwtSecret = process.env.JWT_SECRET) {
   const confirmReservaService = new ConfirmReservaService(reservaRepository);
   const cancelReservaService = new CancelReservaService(reservaRepository);
   const listMisReservasService = new ListMisReservasService(reservaRepository);
-
+  
   // 3. Presentación (Middlewares y controladores)
   const { authenticateToken, requireAdmin } = createAuthMiddlewares(jwtSecret);
   const authController = new AuthController(
     registerUserService,
     loginUserService,
+    getUsuariosService,
   );
   const peliculaController = new PeliculaController(
     createPeliculaService,
@@ -92,7 +95,7 @@ export function createApp(pool, jwtSecret = process.env.JWT_SECRET) {
     }
   });
 
-  app.use('/api', createAuthRoutes(authController));
+  app.use('/api', createAuthRoutes(authController, authenticateToken, requireAdmin));
   app.use('/api', createPeliculaRoutes(peliculaController, authenticateToken, requireAdmin));
   app.use('/api', createFuncionRoutes(funcionController, authenticateToken, requireAdmin));
   app.use('/api', createReservaRoutes(reservaController, authenticateToken));
